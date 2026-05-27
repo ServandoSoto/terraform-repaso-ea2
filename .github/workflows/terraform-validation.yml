@@ -1,0 +1,55 @@
+# Workflow de validación de código estático y seguridad para Terraform
+name: Terraform Validation
+
+# Se ejecuta en cada push o pull request a la rama main
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Validación de código Terraform
+    runs-on: ubuntu-latest
+
+    steps:
+      # Clona el repositorio en la máquina virtual de GitHub Actions
+      - name: Checkout código
+        uses: actions/checkout@v3
+
+      # Instala Terraform en la máquina virtual
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0
+
+      # Verifica que el código esté correctamente formateado
+      # terraform fmt -check retorna error si hay archivos mal formateados
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+
+      # Inicializa el directorio de trabajo sin conectarse a AWS
+      # -backend=false evita configurar el backend remoto
+      - name: Terraform Init
+        run: terraform init -backend=false
+
+      # Valida la sintaxis y configuración del código Terraform
+      - name: Terraform Validate
+        run: terraform validate
+
+  security:
+    name: Análisis de seguridad
+    runs-on: ubuntu-latest
+
+    steps:
+      # Clona el repositorio
+      - name: Checkout código
+        uses: actions/checkout@v3
+
+      # Ejecuta tfsec — herramienta de análisis de seguridad para Terraform
+      # Detecta configuraciones inseguras como puertos abiertos, buckets públicos, etc.
+      - name: tfsec
+        uses: aquasecurity/tfsec-action@v1.0.0
+        with:
+          soft_fail: true  # no falla el workflow si encuentra issues, solo los reporta
